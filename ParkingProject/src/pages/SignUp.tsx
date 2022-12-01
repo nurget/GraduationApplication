@@ -1,5 +1,6 @@
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -13,20 +14,20 @@ import {
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../App';
 import DismissKeyboardView from '../components/DismissKeyboardView';
+import axios, {AxiosError} from 'axios';
+import {Button} from 'react-native-elements';
 
 type SignUpScreenProps = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
 function SignUp({navigation}: SignUpScreenProps) {
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const emailRef = useRef<TextInput | null>(null);
   const nameRef = useRef<TextInput | null>(null);
   const passwordRef = useRef<TextInput | null>(null);
-
-  const toSignIn = useCallback(() => {
-    navigation.navigate('SignIn');
-  }, [navigation]);
 
   const onChangeEmail = useCallback(text => {
     setEmail(text.trim());
@@ -37,7 +38,12 @@ function SignUp({navigation}: SignUpScreenProps) {
   const onChangePassword = useCallback(text => {
     setPassword(text.trim());
   }, []);
-  const onSubmit = useCallback(() => {
+  const onChangeConfirmPassword = useCallback(text => {
+    setConfirmPassword(text.trim());
+  }, []);
+
+  // useEffect는 async쓰면 안되는데 useCallback은 사용 가능
+  const onSubmit = useCallback(async () => {
     if (!email || !email.trim()) {
       return Alert.alert('알림', '이메일을 입력해주세요.');
     }
@@ -46,6 +52,10 @@ function SignUp({navigation}: SignUpScreenProps) {
     }
     if (!password || !password.trim()) {
       return Alert.alert('알림', '비밀번호를 입력해주세요.');
+    }
+    if (password != confirmPassword) {
+      Alert.alert('비밀번호가 일치하지 않습니다.');
+      return;
     }
     if (
       // 이메일을 검사하는 정규표현식(문자의 패턴을 나타내는 표현식)
@@ -62,11 +72,36 @@ function SignUp({navigation}: SignUpScreenProps) {
         '비밀번호는 영문,숫자,특수문자($@^!%*#?&)를 모두 포함하여 8자 이상 입력해야합니다.',
       );
     }
-    console.log(email, name, password);
-    Alert.alert('알림', '회원가입 되었습니다.');
-  }, [email, name, password]);
+    console.log(email, name, password, confirmPassword);
+    try {
+      setLoading(true);
+      // http 메서드: get, put, fetch, post, delete, head, options
+      const response = await axios.post('/user', {
+        email,
+        name,
+        password,
+        confirmPassword,
+      });
+      console.log(response);
+      Alert.alert('알림', '회원가입 되었습니다.');
+    } catch (error) {
+      const errorResponse = (error as AxiosError).response;
+      console.error();
+      if (errorResponse) {
+        Alert.alert('알림', errorResponse.data.message);
+      }
+    } finally {
+      setLoading(false);
+    }
 
-  const canGoNext = email && name && password;
+    Alert.alert('알림', '회원가입 되었습니다.');
+  }, [email, name, password, confirmPassword]);
+
+  const toSignIn = useCallback(() => {
+    navigation.navigate('SignIn');
+  }, [navigation]);
+
+  const canGoNext = email && name && password && confirmPassword;
   return (
     <DismissKeyboardView style={styles.bgColor}>
       <View style={styles.inputWrapper}>
@@ -105,6 +140,7 @@ function SignUp({navigation}: SignUpScreenProps) {
           placeholderTextColor="#666"
           textContentType="emailAddress"
           value={email}
+          keyboardType={Platform.OS === 'android' ? 'default' : 'ascii-capable'}
           returnKeyType="next"
           clearButtonMode="while-editing"
           ref={emailRef}
@@ -130,13 +166,12 @@ function SignUp({navigation}: SignUpScreenProps) {
         />
       </View>
       <View style={styles.inputWrapper}>
-        {/* <Text style={styles.label}>비밀번호</Text> */}
         <TextInput
           style={styles.textInput}
           placeholder="비밀번호를 확인해주세요"
           placeholderTextColor="#666"
-          // onChangeText={onChangePassword}
-          value={password}
+          onChangeText={onChangeConfirmPassword}
+          value={confirmPassword}
           keyboardType={Platform.OS === 'android' ? 'default' : 'ascii-capable'}
           textContentType="password"
           secureTextEntry
@@ -153,9 +188,40 @@ function SignUp({navigation}: SignUpScreenProps) {
               ? StyleSheet.compose(styles.loginButton, styles.loginButtonActive)
               : styles.loginButton
           }
-          disabled={!canGoNext}
+          disabled={!canGoNext || loading}
           onPress={onSubmit}>
-          <Text style={styles.loginButtonText}>회원가입</Text>
+          {/* 로그인 중에 버튼이 눌리지 않도록 */}
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.loginButtonText}>회원가입</Text>
+          )}
+        </Pressable>
+      </View>
+
+      <View>
+        <Text style={styles.orArea}>OR</Text>
+      </View>
+      <View>
+        {/* <Image source={require('../assets/img/Mail.png')} /> */}
+        <Pressable
+          onPress={onSubmit}
+          style={styles.kakaoLoginButton}
+          disabled={!canGoNext}>
+          <Text style={styles.kakaoLoginButtonText}>카카오 로그인</Text>
+        </Pressable>
+      </View>
+      <View>
+        <Pressable
+          onPress={onSubmit}
+          style={styles.googleLoginButton}
+          disabled={!canGoNext}>
+          <Text style={styles.googleLoginButtonText}>구글 로그인</Text>
+        </Pressable>
+      </View>
+      <View style={styles.buttonZone}>
+        <Pressable onPress={toSignIn}>
+          <Text style={styles.loginGoText}>이미 계정이 있으신가요?</Text>
         </Pressable>
       </View>
     </DismissKeyboardView>
@@ -205,6 +271,40 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: 'white',
     fontSize: 16,
+  },
+  kakaoLoginButton: {
+    backgroundColor: '#F7E600',
+    padding: 130,
+    paddingVertical: 20,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    borderRadius: 20,
+  },
+  googleLoginButton: {
+    backgroundColor: '#4285f4',
+    padding: 130,
+    paddingVertical: 20,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    borderRadius: 20,
+  },
+  kakaoLoginButtonText: {
+    color: '#111',
+    fontSize: 16,
+  },
+  googleLoginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  orArea: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#9D9898',
+  },
+  loginGoText: {
+    color: '#3D56F0',
+    marginTop: 10,
   },
 });
 

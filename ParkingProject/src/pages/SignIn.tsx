@@ -11,6 +11,11 @@ import {
 import {RootStackParamList} from '../../App';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import DismissKeyboardView from '../components/DismissKeyboardView';
+import {Button, SocialIcon} from 'react-native-elements';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import SplashScreen from 'react-native-splash-screen';
+
+SplashScreen.hide();
 
 type SignInScreenProps = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 
@@ -34,6 +39,20 @@ function SignIn({navigation}: SignInScreenProps) {
     }
     if (!password || !password.trim()) {
       return Alert.alert('알림', '비밀번호를 입력해주세요.');
+    }
+    if (
+      // 이메일을 검사하는 정규표현식(문자의 패턴을 나타내는 표현식)
+      !/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/.test(
+        email,
+      )
+    ) {
+      return Alert.alert('알림', '올바른 이메일 주소가 아닙니다.');
+    }
+    if (!/^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[$@^!%*#?&]).{8,50}$/.test(password)) {
+      return Alert.alert(
+        '알림',
+        '비밀번호는 영문,숫자,특수문자($@^!%*#?&)를 모두 포함하여 8자 이상 입력해야합니다.',
+      );
     }
     Alert.alert('알림', '로그인 되었습니다.');
   }, [email, password]);
@@ -109,7 +128,9 @@ function SignIn({navigation}: SignInScreenProps) {
       <View>
         <Text style={styles.orArea}>OR</Text>
       </View>
+
       <View>
+        {/* <Image source={require('../assets/img/Mail.png')} /> */}
         <Pressable
           onPress={onSubmit}
           style={styles.kakaoLoginButton}
@@ -176,6 +197,13 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderRadius: 20,
     marginVertical: 10,
+  },
+  ImageIconStyle: {
+    padding: 10,
+    margin: 5,
+    height: 25,
+    width: 25,
+    resizeMode: 'stretch',
   },
   kakaoLoginButton: {
     backgroundColor: '#F7E600',

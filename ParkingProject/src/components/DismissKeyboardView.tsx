@@ -9,7 +9,10 @@ import {
 } from 'react-native';
 import {KeyboardAwareScrollView} from 'react-native-keyboard-aware-scrollview';
 
-const DismissKeyboardView = ({children, ...props}) => (
+const DismissKeyboardView: React.FC<{style?: StyleProp<ViewStyle>}> = ({
+  children,
+  ...props
+}) => (
   <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
     {/* keyboard.dismiss 는 리액트 네이티브에서 제공하는 Keyboard API를 빈 공간을 터치했을 때 내려가게 해주는 함수 */}
     <KeyboardAwareScrollView
