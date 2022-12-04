@@ -8,18 +8,25 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {RootStackParamList} from '../../App';
+import EncryptedStorage from 'react-native-encrypted-storage';
+import {RootStackParamList} from '../../AppInner';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import DismissKeyboardView from '../components/DismissKeyboardView';
-import {Button, SocialIcon} from 'react-native-elements';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+// import {Button, SocialIcon} from 'react-native-elements';
+// import Icon from 'react-native-vector-icons/MaterialIcons';
 import SplashScreen from 'react-native-splash-screen';
+import axios, {AxiosError} from 'axios';
+import Config from 'react-native-config';
+import {useAppDispatch} from '../store';
+import userSlice from '../slices/user';
 
 SplashScreen.hide();
 
 type SignInScreenProps = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 
 function SignIn({navigation}: SignInScreenProps) {
+  const dispatch = useAppDispatch();
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const emailRef = useRef<TextInput | null>(null); // generic, ts에만 있음. 타입이라고 보면 됨.
@@ -32,7 +39,10 @@ function SignIn({navigation}: SignInScreenProps) {
     setPassword(text.trim());
   }, []);
 
-  const onSubmit = useCallback(() => {
+  const onSubmit = useCallback(async () => {
+    if (loading) {
+      return;
+    }
     if (!email || !email.trim()) {
       // trim은 좌우공백을 없애줌, 확실히 검증.
       return Alert.alert('알림', '이메일을 입력해주세요.');
@@ -40,22 +50,52 @@ function SignIn({navigation}: SignInScreenProps) {
     if (!password || !password.trim()) {
       return Alert.alert('알림', '비밀번호를 입력해주세요.');
     }
-    if (
-      // 이메일을 검사하는 정규표현식(문자의 패턴을 나타내는 표현식)
-      !/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/.test(
+    try {
+      setLoading(true);
+      const response = await axios.post(`${Config.API_URL}/login`, {
         email,
-      )
-    ) {
-      return Alert.alert('알림', '올바른 이메일 주소가 아닙니다.');
-    }
-    if (!/^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[$@^!%*#?&]).{8,50}$/.test(password)) {
-      return Alert.alert(
-        '알림',
-        '비밀번호는 영문,숫자,특수문자($@^!%*#?&)를 모두 포함하여 8자 이상 입력해야합니다.',
+        password,
+      });
+      console.log(response.data);
+      Alert.alert('알림', '로그인 되었습니다.');
+      dispatch(
+        userSlice.actions.setUser({
+          name: response.data.data.name,
+          email: response.data.data.email,
+          accessToken: response.data.data.accessToken, // 유효기간을 둠 10분이라면 10분 뒤에 사용되지 않는 토큰으로 변경
+        }),
       );
+
+      // 안전한 Storage에 감싸주기
+      await EncryptedStorage.setItem(
+        'refreshToken',
+        response.data.data.refreshToken,
+      );
+    } catch (error) {
+      const errorResponse = (error as AxiosError).response;
+      if (errorResponse) {
+        Alert.alert('알림', (errorResponse.data as any).message);
+      }
+    } finally {
+      setLoading(false);
     }
-    Alert.alert('알림', '로그인 되었습니다.');
-  }, [email, password]);
+  }, [loading, dispatch, email, password]);
+  //   if (
+  // 이메일을 검사하는 정규표현식(문자의 패턴을 나타내는 표현식)
+  //     !/^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/.test(
+  //       email,
+  //     )
+  //   ) {
+  //     return Alert.alert('알림', '올바른 이메일 주소가 아닙니다.');
+  //   }
+  //   if (!/^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[$@^!%*#?&]).{8,50}$/.test(password)) {
+  //     return Alert.alert(
+  //       '알림',
+  //       '비밀번호는 영문,숫자,특수문자($@^!%*#?&)를 모두 포함하여 8자 이상 입력해야합니다.',
+  //     );
+  //   }
+  //   Alert.alert('알림', '로그인 되었습니다.');
+  // }, [email, password]);
 
   const toSignUp = useCallback(() => {
     navigation.navigate('SignUp');

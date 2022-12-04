@@ -12,10 +12,11 @@ import {
   View,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../App';
+import {RootStackParamList} from '../../AppInner';
 import DismissKeyboardView from '../components/DismissKeyboardView';
 import axios, {AxiosError} from 'axios';
 import {Button} from 'react-native-elements';
+import Config from 'react-native-config';
 
 type SignUpScreenProps = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
@@ -75,27 +76,32 @@ function SignUp({navigation}: SignUpScreenProps) {
     console.log(email, name, password, confirmPassword);
     try {
       setLoading(true);
+      console.log(Config.API_URL);
       // http 메서드: get, put, fetch, post, delete, head, options
-      const response = await axios.post('/user', {
-        email,
-        name,
-        password,
-        confirmPassword,
-      });
-      console.log(response);
+      const response = await axios.post(
+        `${Config.API_URL}/user`, // 개발모드에선 localhost, 배포할 때는 실제 서버 주소
+        {
+          email,
+          name,
+          password,
+          // 일방향암호화 (hash화) ex) 비밀번호를 ayeong123으로 하면 해시화 진행,
+          // 1223020283 같은 알 수 없는 암호로 변경됨. 서버로 가는 순간 ayeong123 사라지고 1223020283 같은 알 수 없는 암호로 남음.
+          confirmPassword,
+        },
+      );
+      console.log(response.data);
       Alert.alert('알림', '회원가입 되었습니다.');
+      navigation.navigate('SignIn');
     } catch (error) {
       const errorResponse = (error as AxiosError).response;
-      console.error();
+      console.error(errorResponse);
       if (errorResponse) {
-        Alert.alert('알림', errorResponse.data.message);
+        Alert.alert('알림', (errorResponse.data as any).message);
       }
     } finally {
       setLoading(false);
     }
-
-    Alert.alert('알림', '회원가입 되었습니다.');
-  }, [email, name, password, confirmPassword]);
+  }, [navigation, email, name, password, confirmPassword]);
 
   const toSignIn = useCallback(() => {
     navigation.navigate('SignIn');

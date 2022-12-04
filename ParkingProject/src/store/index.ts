@@ -17,4 +17,5 @@ export default store;
 
 // 아래 두 개가 타입 에러 방지
 export type AppDispatch = typeof store.dispatch;
+// 기존 함수를 새로운 함수로 바꿔주는 걸 래핑, 단순히 타입스크립트를 위해 래핑함.
 export const useAppDispatch = () => useDispatch<AppDispatch>();
